@@ -11,11 +11,11 @@ import org.apache.log4j.Logger;
 public class MovieRatingsMapper extends Mapper<LongWritable, Text, IntWritable, Text>{
 
     Logger logger = Logger.getLogger(MovieRatingsMapper.class);
-    IntWritable movieId;
+    IntWritable movieId = new IntWritable();
 
     String fileName;
-    private final String DATA_SPLIT = "\t";
-    private final String ITEM_SPLIT = "|";
+    public static final String TAP_SPLIT = "\\t";
+    public static final String PIPE_SPLIT = "\\|";
     private final int RATING = 2;
     private final int USER_ID = 0;
     private final int MOVIE_TITLE = 1;
@@ -39,15 +39,29 @@ public class MovieRatingsMapper extends Mapper<LongWritable, Text, IntWritable, 
 
         // if the file is u#.data
         if (fileName.contains("data")) {
-            String[] values = line.split(DATA_SPLIT);
-            movieId.set(Integer.parseInt(values[1]));                         // value[1] -> movieID
-            context.write(movieId, encodeDataFile(values));
+            String[] values = line.trim().split(TAP_SPLIT);
+            if (values.length == 4) {
+                movieId.set(Integer.parseInt(values[1]));                         // value[1] -> movieID
+                context.write(movieId, encodeDataFile(values));
+            }
+            else {
+                context.getCounter("Errors", "DataParsing").increment(1);
+            }
         }
         // if the file is u.item
         else {
-            String[] values = line.split(ITEM_SPLIT);
-            movieId.set(Integer.parseInt(values[0]));                         // value[0] -> movieID
-            context.write(movieId, encodeItemFile(values));
+            String[] values = line.trim().split(PIPE_SPLIT);
+            if (values.length == 24) {
+                movieId.set(Integer.parseInt(values[0]));                         // value[0] -> movieID
+                Text encodingResult = encodeItemFile(values);
+                if (encodingResult.toString().split(TAP_SPLIT).length > 4) {
+                    context.getCounter("Error", "TabError").increment(1);
+                }
+                context.write(movieId, encodeItemFile(values));
+            }
+            else {
+                context.getCounter("Errors", "ItemParsing").increment(1);
+            }
         }
     }
 
@@ -62,6 +76,14 @@ public class MovieRatingsMapper extends Mapper<LongWritable, Text, IntWritable, 
     protected Text encodeItemFile(String[] values) {
 
         String returnData = null;
+
+        if (values[RELEASE_DATE].isEmpty()) {
+            values[RELEASE_DATE] = "Unknown";
+        }
+        if (values[IMDB_URL].isEmpty()) {
+            values[IMDB_URL] = "Unknown";
+        }
+
         returnData = ITEM_FILE_TAG + "\t" + values[MOVIE_TITLE] + "\t" + values[RELEASE_DATE] + "\t" + values[IMDB_URL];
 
         return new Text(returnData);

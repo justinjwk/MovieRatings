@@ -16,18 +16,19 @@ import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 public class MovieRatings {
     public static void main(String args[])  {
 
-//        String inputPath = args[0];
-//        String outputPath = args[1];
+        String inputPath = args[0];
+        String outputPath = args[1];
 
 //        String inputPath = "/movie-and-ratings";
 //        String outputPath = "/movie-rating-result";
 
-        String inputPath = "/in";
-        String outputPath = "/out";
-
         Job movieRatingsJob = null;
 
         Configuration conf = new Configuration();
+
+        // Job Output Compression
+        conf.setBoolean("mapreduce.output.fileoutputformat.compress",true);
+        conf.setStrings("mapreduce.output.fileoutputformat.compress.codec","org.apache.hadoop.io.compress.GzipCodec");
 
         //conf.setInt("mapred.reduce.tasks", 1);
 
@@ -64,10 +65,10 @@ public class MovieRatings {
         movieRatingsJob.setOutputFormatClass(TextOutputFormat.class);
 
         // Set the Output Key and Value Class
-        movieRatingsJob.setOutputKeyClass(Text.class);
-        movieRatingsJob.setOutputValueClass(IntWritable.class);
+        movieRatingsJob.setOutputKeyClass(IntWritable.class);
+        movieRatingsJob.setOutputValueClass(Text.class);
 
-        // movieRatingsJob.setNumReduceTasks(5);
+         movieRatingsJob.setNumReduceTasks(2);
 
         try {
             movieRatingsJob.waitForCompletion(true);
